@@ -1,5 +1,3 @@
-<script src = "http://10.56.30.193:8097" > </script>
-
 import React, {Component} from 'react';
 
 import {
@@ -10,7 +8,8 @@ import {
   Image,
   TextInput,
   TouchableHighlight,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView
 
 } from 'react-native';
 
@@ -26,22 +25,39 @@ export default class login extends Component {
       }
 
   render() {
-    return (
+      var errorCtrl = <View />;
 
+      if(!this.state.success && this.state.badCredentials){
+        errorCtrl = <Text style={styles.error}>
+          That username and password combination does not work
+        </Text>;
+      }
+
+      if(!this.state.success && this.state.unknownError){
+        errorCtrl = <Text style={styles.error}>
+          We experienced an unexpected issue
+        </Text>;
+      }
+
+    return (
+      
       <View style={styles.container}>
       <Image style={styles.logo} source={require('../assests/Octocat.png')}/>
       <Text style={styles.header}>Github Browser</Text>
       <TextInput
-        onChangeText={(text)=> this.setState({Username: text})}
+        onChangeText={(text)=> this.setState({username: text})}
         style={styles.Input} placeholder="Github Username" autoCapitalize = 'none'/>
       <TextInput
-        onChangeText={(text)=> this.setState({Password: text})}
-        style={styles.Input} placeholder="Github Password" autoCapitalize = 'none' secureTextEntry="true"/>
+        onChangeText={(text)=> this.setState({password: text})}
+        style={styles.Input} placeholder="Github Password" autoCapitalize = 'none' secureTextEntry={true}/>
       <TouchableHighlight
         onPress={this.onLoginPressed.bind(this)}
         style={styles.button}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableHighlight>
+
+      {errorCtrl}
+
       <ActivityIndicator
           animating={this.state.showProgress}
           size="small"
@@ -53,23 +69,20 @@ export default class login extends Component {
   onLoginPressed(){
     this.setState({showProgress: true});
 
-        var b = new buffer.Buffer(this.state.Username + ':' + this.state.Password);
-        var encodedAuth = (b.toString('base64'));
+    var authService = require('./AuthService');
+    authService.login({
+        username: this.state.username,
+        password: this.state.password
+      }, (results)=> {
+        this.setState(Object.assign({
+          showProgress: false
+        }, results));
 
+        if (results.success && this.props.onLogin) {
+            this.props.onLogin();
+        }
+    })
 
-        fetch('https://api.github.com/user',{
-          headers: {
-            'Authorization' : 'Basic ' + encodedAuth
-            }
-
-        })
-        .then((respnse)=>{
-          return respnse.json();
-        })
-        .then((results)=>{
-          console.log(results);
-          this.setState({showProgress: false});
-        });
   }
 }
 
@@ -111,10 +124,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: '#ffffff'
   },
-
   loader:{
     marginTop:10,
-
+  },
+  error:{
+    color: 'red',
+    paddingTop: 10,
   }
 
 });
